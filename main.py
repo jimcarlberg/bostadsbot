@@ -1,3 +1,5 @@
+print("🚀 main.py är igång!")
+
 import asyncio
 from playwright.async_api import async_playwright
 import smtplib
