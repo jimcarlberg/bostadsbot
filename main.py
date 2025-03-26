@@ -1,5 +1,3 @@
-print("🚀 main.py är igång!")
-
 import asyncio
 from playwright.async_api import async_playwright
 import smtplib
@@ -7,10 +5,16 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 
+print("🚀 main.py är igång!")
+
 SEARCH_URL = "https://bostad.stockholm.se/bostad?minAntalRum=4&vanlig=1&s=59.29903&n=59.40141&w=17.95647&e=18.16280&sort=annonserad-fran-desc"
-SENDER_EMAIL = os.getenv("EMAIL_USER")
-APP_PASSWORD = os.getenv("EMAIL_PASSWORD")
+SENDER_EMAIL = os.getenv("EMAIL_USER") or "MISSING_EMAIL"
+APP_PASSWORD = os.getenv("EMAIL_PASSWORD") or "MISSING_PASS"
 RECEIVER_EMAIL = "hello@jimcarlberg.com"
+
+if "MISSING" in SENDER_EMAIL or "MISSING" in APP_PASSWORD:
+    print("❗️Saknar e-postuppgifter! Kontrollera GitHub Secrets.")
+    exit(1)
 
 async def scrape_bostader():
     async with async_playwright() as p:
@@ -24,7 +28,6 @@ async def scrape_bostader():
             await page.wait_for_selector(".search-result-item", timeout=60000)
         except Exception as e:
             print("❌ Kunde inte hitta annonser:", e)
-            # Skärmdump för felsökning
             await page.screenshot(path="screenshot.png", full_page=True)
             print("📸 Skärmdump sparad som screenshot.png")
             await browser.close()
@@ -72,4 +75,11 @@ def send_email(results):
     print("✅ Mejlet skickades!")
 
 async def main():
-    results = await scrape_bostader_
+    results = await scrape_bostader()
+    if results:
+        send_email(results)
+    else:
+        print("ℹ️ Inga nya annonser hittades.")
+
+if __name__ == "__main__":
+    asyncio.run(main())
