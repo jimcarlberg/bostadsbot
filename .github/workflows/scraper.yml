@@ -2,7 +2,7 @@ name: Bostadsbot Scheduler
 
 on:
   schedule:
-    - cron: '15 0 * * *'  # Kör dagligen 00:15
+    - cron: '15 0 * * *'  # Kör varje dag 00:15
   workflow_dispatch:
 
 jobs:
