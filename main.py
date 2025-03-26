@@ -14,9 +14,22 @@ async def scrape_bostader():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
-        await page.goto(SEARCH_URL)
-        await page.wait_for_selector(".search-result-item")
+        print("🔍 Navigerar till bostad.stockholm.se...")
+        await page.goto(SEARCH_URL, wait_until="networkidle")
+        print("✅ Sidan laddad, väntar på annonser...")
+
+        try:
+            await page.wait_for_selector(".search-result-item", timeout=60000)
+        except Exception as e:
+            print("❌ Kunde inte hitta annonser:", e)
+            # Skärmdump för felsökning
+            await page.screenshot(path="screenshot.png", full_page=True)
+            print("📸 Skärmdump sparad som screenshot.png")
+            await browser.close()
+            return []
+
         items = await page.query_selector_all(".search-result-item")
+        print(f"✅ Hittade {len(items)} annonser.")
 
         results = []
         for item in items:
@@ -38,7 +51,7 @@ async def scrape_bostader():
         return results
 
 def send_email(results):
-    print(f"Skickar {len(results)} annonser...")
+    print(f"📤 Skickar mejl med {len(results)} annonser...")
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Nya bostadsannonser (Stockholm)"
     msg["From"] = SENDER_EMAIL
@@ -54,14 +67,7 @@ def send_email(results):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(SENDER_EMAIL, APP_PASSWORD)
         server.send_message(msg)
-    print("Mail skickat!")
+    print("✅ Mejlet skickades!")
 
 async def main():
-    results = await scrape_bostader()
-    if results:
-        send_email(results)
-    else:
-        print("Inga nya annonser hittades.")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    results = await scrape_bostader_
