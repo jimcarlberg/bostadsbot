@@ -38,6 +38,7 @@ async def scrape_bostader():
         return results
 
 def send_email(results):
+    print(f"Skickar {len(results)} annonser...")
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Nya bostadsannonser (Stockholm)"
     msg["From"] = SENDER_EMAIL
@@ -53,6 +54,7 @@ def send_email(results):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(SENDER_EMAIL, APP_PASSWORD)
         server.send_message(msg)
+    print("Mail skickat!")
 
 async def main():
     results = await scrape_bostader()
