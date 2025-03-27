@@ -1,5 +1,5 @@
-import asyncio
-from playwright.async_api import async_playwright
+import requests
+from bs4 import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -12,63 +12,36 @@ SENDER_EMAIL = os.getenv("EMAIL_USER") or "MISSING_EMAIL"
 APP_PASSWORD = os.getenv("EMAIL_PASSWORD") or "MISSING_PASS"
 RECEIVER_EMAIL = "hello@jimcarlberg.com"
 
-if "MISSING" in SENDER_EMAIL or "MISSING" in APP_PASSWORD:
-    print("❗️Saknar e-postuppgifter! Kontrollera GitHub Secrets.")
-    exit(1)
+def fetch_bostader():
+    print("🌐 Hämtar HTML från sidan...")
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+    response = requests.get(SEARCH_URL, headers=headers)
+    if response.status_code != 200:
+        print(f"❌ Misslyckades att hämta sidan (status {response.status_code})")
+        return []
 
-async def scrape_bostader():
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        print("🔍 Navigerar till bostad.stockholm.se...")
-        await page.goto(SEARCH_URL, wait_until="load")
-        print("✅ Sidan laddad, hanterar cookies...")
+    soup = BeautifulSoup(response.text, "html.parser")
+    results = []
 
-        try:
-            await page.locator("button:has-text('Avvisa alla')").click(timeout=5000)
-            print("🍪 Cookie-popup avvisad.")
-        except:
-            print("ℹ️ Ingen cookie-popup att avvisa.")
+    print("🔎 Söker efter annonser i HTML...")
+    for li in soup.select("ul.search-list > li"):
+        title_el = li.select_one("a.search-list-heading")
+        info_el = li.select_one(".search-list-summary")
 
-        # Extra lång väntan
-        print("⏳ Väntar extra 10 sekunder för att allt ska laddas...")
-        await page.wait_for_timeout(10000)
+        title = title_el.text.strip() if title_el else "(no title)"
+        link = title_el["href"] if title_el and "href" in title_el.attrs else "#"
+        info = info_el.text.strip() if info_el else ""
 
-        # Scrolla ner
-        await page.mouse.wheel(0, 2000)
-        await page.wait_for_timeout(1000)
+        results.append({
+            "title": title,
+            "link": f"https://bostad.stockholm.se{link}",
+            "info": info
+        })
 
-        # Hämta alla annonser direkt utan wait_for_selector
-        items = await page.query_selector_all("ul.search-list > li")
-        print(f"🔎 Direkt DOM-sökning hittade {len(items)} annonser.")
-
-        if not items:
-            await page.screenshot(path="screenshot.png", full_page=True)
-            html = await page.content()
-            with open("page.html", "w", encoding="utf-8") as f:
-                f.write(html)
-            print("📸 Skärmdump + HTML sparad.")
-            await browser.close()
-            return []
-
-        results = []
-        for item in items:
-            title_el = await item.query_selector("a.search-list-heading")
-            link_el = await item.query_selector("a")
-            info_el = await item.query_selector(".search-list-summary")
-
-            title = await title_el.inner_text() if title_el else "(no title)"
-            link = await link_el.get_attribute("href") if link_el else "#"
-            info = await info_el.inner_text() if info_el else ""
-
-            results.append({
-                "title": title.strip(),
-                "link": f"https://bostad.stockholm.se{link.strip()}",
-                "info": info.strip()
-            })
-
-        await browser.close()
-        return results
+    print(f"✅ Hittade {len(results)} annonser.")
+    return results
 
 def send_email(results):
     print(f"📤 Skickar mejl med {len(results)} annonser...")
@@ -89,12 +62,12 @@ def send_email(results):
         server.send_message(msg)
     print("✅ Mejlet skickades!")
 
-async def main():
-    results = await scrape_bostader()
+def main():
+    results = fetch_bostader()
     if results:
         send_email(results)
     else:
-        print("ℹ️ Inga nya annonser hittades.")
+        print("ℹ️ Inga annonser hittades eller sidan var tom.")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
