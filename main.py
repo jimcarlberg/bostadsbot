@@ -21,7 +21,7 @@ async def scrape_bostader():
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
         print("🔍 Navigerar till bostad.stockholm.se...")
-        await page.goto(SEARCH_URL, wait_until="networkidle")
+        await page.goto(SEARCH_URL, wait_until="load")
         print("✅ Sidan laddad, hanterar cookies...")
 
         try:
@@ -30,17 +30,29 @@ async def scrape_bostader():
         except:
             print("ℹ️ Ingen cookie-popup att avvisa.")
 
+        print("⏳ Väntar extra 5 sek för att JS-innehåll ska laddas...")
+        await page.wait_for_timeout(5000)
+
+        print("🔽 Skrollar ner på sidan...")
+        await page.mouse.wheel(0, 1000)
+        await page.wait_for_timeout(2000)
+
         try:
-            await page.wait_for_selector(".search-list-item", timeout=60000)
+            await page.wait_for_selector(".search-list-item", timeout=10000)
         except Exception as e:
-            print("❌ Kunde inte hitta annonser:", e)
-            await page.screenshot(path="screenshot.png", full_page=True)
-            print("📸 Skärmdump sparad som screenshot.png")
-            await browser.close()
-            return []
+            print("❌ Kunde inte hitta .search-list-item:", e)
 
         items = await page.query_selector_all(".search-list-item")
-        print(f"✅ Hittade {len(items)} annonser.")
+        print(f"🔎 DOM-sökning hittade {len(items)} annonser.")
+
+        if len(items) == 0:
+            await page.screenshot(path="screenshot.png", full_page=True)
+            html = await page.content()
+            with open("page.html", "w", encoding="utf-8") as f:
+                f.write(html)
+            print("📸 Skärmdump + HTML sparad.")
+            await browser.close()
+            return []
 
         results = []
         for item in items:
