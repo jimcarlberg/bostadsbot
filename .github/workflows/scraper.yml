@@ -2,7 +2,7 @@ name: Bostadsbot Scheduler
 
 on:
   schedule:
-    - cron: '15 0 * * *'  # Kör varje dag 00:15
+    - cron: '15 0 * * *'
   workflow_dispatch:
 
 jobs:
@@ -30,3 +30,11 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         run: |
           python main.py
+
+      - name: Upload screenshot if exists
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot
+          path: screenshot.png
+          if-no-files-found: ignore
