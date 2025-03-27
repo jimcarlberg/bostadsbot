@@ -25,14 +25,13 @@ async def scrape_bostader():
         print("✅ Sidan laddad, hanterar cookies...")
 
         try:
-            # Klicka på cookie-popup om den syns
             await page.locator("button:has-text('Avvisa alla')").click(timeout=5000)
             print("🍪 Cookie-popup avvisad.")
         except:
             print("ℹ️ Ingen cookie-popup att avvisa.")
 
         try:
-            await page.wait_for_selector(".search-result-item", timeout=60000)
+            await page.wait_for_selector(".search-list-item", timeout=60000)
         except Exception as e:
             print("❌ Kunde inte hitta annonser:", e)
             await page.screenshot(path="screenshot.png", full_page=True)
@@ -40,14 +39,14 @@ async def scrape_bostader():
             await browser.close()
             return []
 
-        items = await page.query_selector_all(".search-result-item")
+        items = await page.query_selector_all(".search-list-item")
         print(f"✅ Hittade {len(items)} annonser.")
 
         results = []
         for item in items:
-            title_el = await item.query_selector(".search-result-heading")
+            title_el = await item.query_selector("a.search-list-heading")
             link_el = await item.query_selector("a")
-            info_el = await item.query_selector(".search-result-summary")
+            info_el = await item.query_selector(".search-list-summary")
 
             title = await title_el.inner_text() if title_el else "(no title)"
             link = await link_el.get_attribute("href") if link_el else "#"
@@ -61,7 +60,6 @@ async def scrape_bostader():
 
         await browser.close()
         return results
-
 
 def send_email(results):
     print(f"📤 Skickar mejl med {len(results)} annonser...")
