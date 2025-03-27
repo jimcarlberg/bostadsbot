@@ -22,7 +22,14 @@ async def scrape_bostader():
         page = await browser.new_page()
         print("🔍 Navigerar till bostad.stockholm.se...")
         await page.goto(SEARCH_URL, wait_until="networkidle")
-        print("✅ Sidan laddad, väntar på annonser...")
+        print("✅ Sidan laddad, hanterar cookies...")
+
+        try:
+            # Klicka på cookie-popup om den syns
+            await page.locator("button:has-text('Avvisa alla')").click(timeout=5000)
+            print("🍪 Cookie-popup avvisad.")
+        except:
+            print("ℹ️ Ingen cookie-popup att avvisa.")
 
         try:
             await page.wait_for_selector(".search-result-item", timeout=60000)
@@ -54,6 +61,7 @@ async def scrape_bostader():
 
         await browser.close()
         return results
+
 
 def send_email(results):
     print(f"📤 Skickar mejl med {len(results)} annonser...")
