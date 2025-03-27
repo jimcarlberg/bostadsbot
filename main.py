@@ -30,14 +30,19 @@ async def scrape_bostader():
         except:
             print("ℹ️ Ingen cookie-popup att avvisa.")
 
-        await page.wait_for_timeout(5000)
-        await page.mouse.wheel(0, 1000)
+        # Extra lång väntan
+        print("⏳ Väntar extra 10 sekunder för att allt ska laddas...")
+        await page.wait_for_timeout(10000)
+
+        # Scrolla ner
+        await page.mouse.wheel(0, 2000)
         await page.wait_for_timeout(1000)
 
-        try:
-            await page.wait_for_selector("ul.search-list > li", timeout=10000)
-        except Exception as e:
-            print("❌ Kunde inte hitta annonser:", e)
+        # Hämta alla annonser direkt utan wait_for_selector
+        items = await page.query_selector_all("ul.search-list > li")
+        print(f"🔎 Direkt DOM-sökning hittade {len(items)} annonser.")
+
+        if not items:
             await page.screenshot(path="screenshot.png", full_page=True)
             html = await page.content()
             with open("page.html", "w", encoding="utf-8") as f:
@@ -45,9 +50,6 @@ async def scrape_bostader():
             print("📸 Skärmdump + HTML sparad.")
             await browser.close()
             return []
-
-        items = await page.query_selector_all("ul.search-list > li")
-        print(f"✅ Hittade {len(items)} annonser i ul.search-list.")
 
         results = []
         for item in items:
